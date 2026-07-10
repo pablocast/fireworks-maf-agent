@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: fireworks-maf-agent
+services:
+    fireworks-foundry-project:
+        host: azure.ai.project
+        endpoint: https://fireworks-foundry.services.ai.azure.com/api/projects/fireworks-foundry-project
+    fireworks-maf-agent:
+        project: .
+        host: azure.ai.agent
+        language: python
+        uses:
+            - fireworks-foundry-project
+        codeConfiguration:
+            entryPoint: src/agent.py
+            runtime: python_3_13
+        container:
+            resources:
+                cpu: "0.5"
+                memory: 1Gi
+        description: A Fireworks AI chat agent with the Fireworks Docs MCP tool, hosted by Foundry.
+        environmentVariables:
+            - name: FIREWORKS_API_KEY
+              value: ${FIREWORKS_API_KEY}
+            - name: FIREWORKS_BASE_URL
+              value: ${FIREWORKS_BASE_URL}
+            - name: FIREWORKS_MODEL
+              value: ${FIREWORKS_MODEL}
+        kind: hosted
+        name: fireworks-maf-agent
+        protocols:
+            - protocol: responses
+              version: 2.0.0
+infra:
+    provider: microsoft.foundry

@@ -1,3 +1,4 @@
-agent-framework==1.10.0
-agent-framework-openai==1.10.0
+agent-framework-core==1.11.0
+agent-framework-openai==1.10.1
 python-dotenv==1.2.2
+agent-framework-foundry-hosting>=1.0.0a260630
