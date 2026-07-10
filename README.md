@@ -1,24 +1,28 @@
 # Fireworks Chat Agent
 
-A simple interactive chat agent built with the **Microsoft Agent Framework** that
-runs against a **Fireworks AI** deployment (via its OpenAI-compatible API) and is
-augmented with the **Fireworks Docs MCP** server as a tool.
+A **hosted agent** built with the **Microsoft Agent Framework** that runs against a
+**Fireworks AI** deployment (via its OpenAI-compatible API) and is augmented with the
+**Fireworks Docs MCP** server as a tool.
 
 ## Overview
 
 This project wires together three pieces:
 
-- **Microsoft Agent Framework** (`agent-framework`) — orchestrates the agent, tool
-  calling, and the conversation session.
+- **Microsoft Agent Framework** (`agent-framework-core`) — orchestrates the agent,
+  tool calling, and the conversation session.
 - **Fireworks AI deployment** — the LLM backing the agent, accessed through the
   OpenAI-compatible endpoint (`https://api.fireworks.ai/inference/v1`).
 - **Fireworks Docs MCP server** (`https://docs.fireworks.ai/mcp`) — a streamable
   HTTP [MCP](https://modelcontextprotocol.io) server that lets the agent search the
   full Fireworks AI documentation before answering.
 
-The agent runs as a colorized, streaming command-line chat loop. When you ask about
-Fireworks features, APIs, deployments, or configuration, the agent calls the docs
-tools to ground its answers in the official documentation.
+The agent is packaged as a **hosted agent** using the Foundry **responses** protocol.
+`src/agent.py` starts a `ResponsesHostServer` that serves the agent over HTTP — the
+same contract whether it runs locally or in the cloud. It is **not** a standalone
+CLI program; you interact with it through the hosted agent endpoint (for example,
+the Foundry playground). When you ask about Fireworks features, APIs, deployments,
+or configuration, the agent calls the docs tools to ground its answers in the
+official documentation.
 
 ## Prerequisites
 
@@ -27,7 +31,7 @@ tools to ground its answers in the official documentation.
   ([create one here](https://app.fireworks.ai/settings/users/api-keys))
 - Network access to `api.fireworks.ai` and `docs.fireworks.ai`
 
-To run and deploy the agent as a **hosted agent** on Azure AI Foundry you also need:
+To run and deploy the agent as a **hosted agent** on Microsoft Foundry you also need:
 
 - **[Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)** (`azd`) 1.25.2 or later
 - The **Foundry `azd` extensions** (provide the `azd ai` command group):
@@ -47,28 +51,31 @@ To run and deploy the agent as a **hosted agent** on Azure AI Foundry you also n
 
 ```mermaid
 flowchart LR
-    User([User / Terminal]) <--> Agent
+    Client([Client / Foundry playground]) <-->|responses protocol over HTTP| Server
 
     subgraph App["src/agent.py"]
+        Server["ResponsesHostServer"]
         Agent["Agent<br/>(Microsoft Agent Framework)"]
-        Client["OpenAIChatClient"]
+        ChatClient["OpenAIChatClient"]
         MCP["MCPStreamableHTTPTool<br/>fireworks-docs"]
-        Agent --> Client
+        Server --> Agent
+        Agent --> ChatClient
         Agent --> MCP
     end
 
-    Client -->|OpenAI-compatible API| Fireworks[("Fireworks AI<br/>deployment")]
+    ChatClient -->|OpenAI-compatible API| Fireworks[("Fireworks AI<br/>deployment")]
     MCP -->|streamable HTTP| Docs[("Fireworks Docs<br/>MCP server")]
 ```
 
 **Flow:**
 
-1. The user types a message in the terminal.
+1. A client sends a request to the hosted agent endpoint using the responses
+   protocol.
 2. The `Agent` sends the conversation to the Fireworks model via `OpenAIChatClient`.
 3. If the model decides it needs documentation, it calls a tool exposed by the
    Fireworks Docs MCP server (e.g. `search_fireworks_ai_docs`).
-4. Tool results are fed back to the model, which streams the final answer to the
-   terminal.
+4. Tool results are fed back to the model, which streams the final answer back to
+   the client.
 
 Conversation state is kept across turns using an agent session.
 
@@ -106,30 +113,12 @@ Conversation state is kept across turns using an agent session.
    FIREWORKS_MODEL=accounts/fireworks/models/llama-v3p3-70b-instruct
    ```
 
-## Usage
-
-Run the agent:
-
-```bash
-python src/agent.py
-```
-
-You'll get an interactive prompt. Your input appears in **cyan** and the agent's
-streamed response in **green**. Type `exit` or `quit` (or press `Ctrl+C`) to stop.
-
-Example questions that trigger the docs tools:
-
-- "How do I configure autoscaling for deployments?"
-- "What parameters does the chat completions endpoint accept?"
-- "Show me examples of function calling with Fireworks models."
-- "Find the API reference for batch inference."
-
 ## Run as a hosted agent (locally)
 
 The agent is packaged as a **hosted agent** using the Foundry **responses**
 protocol. `src/agent.py` starts a `ResponsesHostServer` (defined in
-`agent-framework-foundry-hosting`) instead of a CLI loop, which serves the agent
-over HTTP — the same contract used when it runs in the cloud.
+`agent-framework-foundry-hosting`), which serves the agent over HTTP — the
+same contract used when it runs in the cloud.
 
 Run it locally with the Foundry `azd` extension:
 
@@ -137,21 +126,25 @@ Run it locally with the Foundry `azd` extension:
 azd ai agent run
 ```
 
-This reads `azure.yaml`, installs `requirements.txt`, runs the `startupCommand`
+This reads `azure.yaml`, installs `requirements.txt`, runs the entry point
 (`python src/agent.py`), and starts the agent on <http://localhost:8088>. Your
 `.env` values (`FIREWORKS_API_KEY`, `FIREWORKS_MODEL`, `FIREWORKS_BASE_URL`) are
 used for the model connection.
+
+Because it speaks the responses protocol over HTTP, interact with it through the
+agent endpoint (for example, the Foundry playground or `azd ai agent invoke`) —
+not as an interactive terminal program.
 
 > Running locally you may see a one-off `169.254.169.254` (Azure IMDS) connection
 > timeout in the logs. It is harmless — that metadata endpoint only exists when
 > running on Azure, so the probe simply times out locally.
 
-## Deploy to Azure AI Foundry
+## Deploy to Microsoft Foundry
 
 Deployment is driven by `azure.yaml`, which describes the hosted agent service
 (`host: azure.ai.agent`, `kind: hosted`, `protocol: responses`), its Foundry
-project, container resources, startup command, and the environment variables
-passed to the container.
+project, Python runtime and entry point, resource allocation, and the environment
+variables passed to the agent.
 
 1. **Sign in** (if you haven't already):
 
@@ -191,10 +184,10 @@ agent endpoint.
 
 ## Result
 
-Once deployed, the agent is available in the Azure AI Foundry playground, where you
+Once deployed, the agent is available in the Microsoft Foundry playground, where you
 can chat with it and watch it call the Fireworks Docs MCP tools:
 
-![The deployed agent running in the Azure AI Foundry playground](docs/images/agent-in-foundry.png)
+![The deployed agent running in the Microsoft Foundry playground](docs/images/agent-in-foundry.png)
 
 ## Project Structure
 
