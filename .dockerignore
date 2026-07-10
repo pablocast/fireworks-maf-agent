@@ -1,0 +1,36 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Version control
+.git/
+.gitignore
+
+# azd / Azure tooling
+.azure/
+azure.yaml
+*.log
+azd-*.log
+
+# Environment & secrets
+.env
+.env.*
+
+# Python caches & build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docs & agent config not needed in the image
+README.md
+.agentignore

@@ -27,6 +27,22 @@ tools to ground its answers in the official documentation.
   ([create one here](https://app.fireworks.ai/settings/users/api-keys))
 - Network access to `api.fireworks.ai` and `docs.fireworks.ai`
 
+To run and deploy the agent as a **hosted agent** on Azure AI Foundry you also need:
+
+- **[Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)** (`azd`) 1.25.2 or later
+- The **Foundry `azd` extensions** (provide the `azd ai` command group):
+
+  ```bash
+  azd ext install microsoft.foundry
+  ```
+
+- An **Azure subscription** with the `Contributor` and `Foundry Owner` roles, and
+  a signed-in CLI session:
+
+  ```bash
+  azd auth login
+  ```
+
 ## Architecture
 
 ```mermaid
@@ -108,12 +124,87 @@ Example questions that trigger the docs tools:
 - "Show me examples of function calling with Fireworks models."
 - "Find the API reference for batch inference."
 
+## Run as a hosted agent (locally)
+
+The agent is packaged as a **hosted agent** using the Foundry **responses**
+protocol. `src/agent.py` starts a `ResponsesHostServer` (defined in
+`agent-framework-foundry-hosting`) instead of a CLI loop, which serves the agent
+over HTTP — the same contract used when it runs in the cloud.
+
+Run it locally with the Foundry `azd` extension:
+
+```bash
+azd ai agent run
+```
+
+This reads `azure.yaml`, installs `requirements.txt`, runs the `startupCommand`
+(`python src/agent.py`), and starts the agent on <http://localhost:8088>. Your
+`.env` values (`FIREWORKS_API_KEY`, `FIREWORKS_MODEL`, `FIREWORKS_BASE_URL`) are
+used for the model connection.
+
+> Running locally you may see a one-off `169.254.169.254` (Azure IMDS) connection
+> timeout in the logs. It is harmless — that metadata endpoint only exists when
+> running on Azure, so the probe simply times out locally.
+
+## Deploy to Azure AI Foundry
+
+Deployment is driven by `azure.yaml`, which describes the hosted agent service
+(`host: azure.ai.agent`, `kind: hosted`, `protocol: responses`), its Foundry
+project, container resources, startup command, and the environment variables
+passed to the container.
+
+1. **Sign in** (if you haven't already):
+
+   ```bash
+   azd auth login
+   ```
+
+2. **Provision** the supporting infrastructure. This creates the Azure Container
+   Registry (ACR) that the agent image is pushed to and sets the
+   `AZURE_CONTAINER_REGISTRY_ENDPOINT` value in your azd environment:
+
+   ```bash
+   azd provision
+   ```
+
+   > **Note:** `azd deploy` only builds and publishes the container image — it
+   > assumes the registry already exists. If you run `azd deploy` before
+   > provisioning, it fails with
+   > `could not determine container registry endpoint`. Run `azd provision`
+   > first (or use `azd up` to provision and deploy in one step).
+
+3. **Deploy** the agent (builds the container remotely and publishes it to your
+   Foundry project):
+
+   ```bash
+   azd deploy
+   ```
+
+`azd deploy` uses `remoteBuild` to build the image in Azure, provisions/updates
+the hosted agent in the `fireworks-foundry-project`, and injects the
+`FIREWORKS_*` variables (from your environment / `.env`) into the running
+container. Once complete, the agent is reachable through your Foundry project's
+agent endpoint.
+
+> **Tip:** `azd up` runs `azd provision` followed by `azd deploy` in a single
+> command — use it for a fresh environment.
+
+## Result
+
+Once deployed, the agent is available in the Azure AI Foundry playground, where you
+can chat with it and watch it call the Fireworks Docs MCP tools:
+
+![The deployed agent running in the Azure AI Foundry playground](docs/images/agent-in-foundry.png)
+
 ## Project Structure
 
 ```
 .
 ├── .env               # Fireworks credentials & model config
+├── azure.yaml         # azd hosted-agent + Foundry deployment config
 ├── requirements.txt   # Python dependencies
+├── docs/
+│   └── images/        # Screenshots used in the docs
 └── src/
-    └── agent.py       # Chat agent entry point
+    └── agent.py       # Hosted agent entry point (ResponsesHostServer)
 ```

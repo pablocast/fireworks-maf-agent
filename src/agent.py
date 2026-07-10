@@ -10,19 +10,11 @@ import os
 
 from agent_framework import MCPStreamableHTTPTool
 from agent_framework.openai import OpenAIChatClient
+from agent_framework_foundry_hosting import ResponsesHostServer
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Enable ANSI escape sequences on Windows terminals.
-if os.name == "nt":
-    os.system("")
-
-# ANSI colors.
-RESET = "\033[0m"
-BOLD = "\033[1m"
-CYAN = "\033[36m"   # user
-GREEN = "\033[32m"  # agent
 
 # Fireworks exposes an OpenAI-compatible endpoint.
 FIREWORKS_BASE_URL = os.getenv("FIREWORKS_BASE_URL", "https://api.fireworks.ai/inference/v1")
@@ -35,7 +27,6 @@ INSTRUCTIONS = (
     "use the Fireworks documentation tools to look up accurate, up-to-date information "
     "before answering. Cite the relevant docs when useful."
 )
-
 
 async def main() -> None:
     if not FIREWORKS_API_KEY:
@@ -60,29 +51,11 @@ async def main() -> None:
             tools=fireworks_docs,
         )
 
-        print("Fireworks chat agent ready. Type 'exit' or 'quit' to stop.\n")
-        session = agent.create_session()
-
-        while True:
-            try:
-                user_input = input(f"{BOLD}{CYAN}You:{RESET}{CYAN} ").strip()
-            except (EOFError, KeyboardInterrupt):
-                print(RESET)
-                break
-            finally:
-                print(RESET, end="")
-
-            if not user_input:
-                continue
-            if user_input.lower() in {"exit", "quit"}:
-                break
-
-            print(f"{BOLD}{GREEN}Agent:{RESET}{GREEN} ", end="", flush=True)
-            async for chunk in agent.run(user_input, stream=True, session=session):
-                if chunk.text:
-                    print(chunk.text, end="", flush=True)
-            print(RESET)
-
+        # Start the ResponsesHostServer to handle incoming requests.
+        # Use run_async() because we are already inside a running event loop
+        # (server.run() would call asyncio.run() again and fail).
+        server = ResponsesHostServer(agent)
+        await server.run_async()
     
 
 if __name__ == "__main__":
