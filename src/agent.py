@@ -31,7 +31,7 @@ INSTRUCTIONS = (
 async def main() -> None:
     if not FIREWORKS_API_KEY:
         raise SystemExit(
-            "FIREWORKS_API_KEY is not set. Add it to your .env file (see .env for the template)."
+            "FIREWORKS_API_KEY is not set. Add it to your .env file (see .env.example for the template)."
         )
 
     chat_client = OpenAIChatClient(
@@ -56,7 +56,7 @@ async def main() -> None:
         # (server.run() would call asyncio.run() again and fail).
         server = ResponsesHostServer(agent)
         await server.run_async()
-    
+
 
 if __name__ == "__main__":
     asyncio.run(main())
