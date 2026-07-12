@@ -103,14 +103,13 @@ Conversation state is kept across turns using an agent session.
    | -------------------- | -------------------------------------------------------- | ---------------------------------------------------- |
    | `FIREWORKS_API_KEY`  | Your Fireworks AI API key (**required**)                 | —                                                    |
    | `FIREWORKS_BASE_URL` | OpenAI-compatible endpoint                               | `https://api.fireworks.ai/inference/v1`              |
-   | `FIREWORKS_MODEL`    | Model id or your deployment                              | `accounts/fireworks/models/llama-v3p3-70b-instruct`  |
+
 
    Example `.env`:
 
    ```properties
    FIREWORKS_API_KEY=fw_your_generated_key_here
    FIREWORKS_BASE_URL=https://api.fireworks.ai/inference/v1
-   FIREWORKS_MODEL=accounts/fireworks/models/llama-v3p3-70b-instruct
    ```
 
 ## Run as a hosted agent (locally)
@@ -184,10 +183,11 @@ agent endpoint.
 
 ## Result
 
-Once deployed, the agent is available in the Microsoft Foundry playground, where you
-can chat with it and watch it call the Fireworks Docs MCP tools:
+Once deployed, the agents, each for a different base model, are available in the Microsoft Foundry playground, where youcan chat with them and watch them call the Fireworks Docs MCP tools:
 
-![The deployed agent running in the Microsoft Foundry playground](docs/images/agent-in-foundry.png)
+![The deployed agents](docs/images/foundry-hosted-agent-multimodel.png)
+
+![Chat with an agent running in the Microsoft Foundry playground](docs/images/agent-in-foundry.png)
 
 ## Project Structure
 
