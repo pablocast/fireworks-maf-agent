@@ -183,9 +183,11 @@ agent endpoint.
 
 ## Result
 
-Once deployed, the agents, each for a different base model, are available in the Microsoft Foundry playground, where youcan chat with them and watch them call the Fireworks Docs MCP tools:
+Once deployed, the agents, each for a different base model, are available in the Microsoft Foundry Agents tab:
 
 ![The deployed agents](docs/images/foundry-hosted-agent-multimodel.png)
+
+You can chat with them and watch them call the Fireworks Docs MCP tools:
 
 ![Chat with an agent running in the Microsoft Foundry playground](docs/images/agent-in-foundry.png)
 
